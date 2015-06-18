@@ -392,6 +392,10 @@ SOURCE=.\misc\win32\internal.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\misc\win32\log.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\misc\win32\misc.c
 # End Source File
 # Begin Source File
@@ -646,6 +650,10 @@ SOURCE=.\include\arch\win32\apr_arch_threadproc.h
 # Begin Source File
 
 SOURCE=.\include\arch\win32\apr_arch_utf8.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\include\arch\win32\apr_log.h
 # End Source File
 # Begin Source File
 
