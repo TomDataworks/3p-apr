@@ -39,12 +39,6 @@ case "$AUTOBUILD_PLATFORM" in
     build_sln "apr-util/aprutil.sln" "Release|Win32" "aprutil"  || exit 1
     build_sln "apr-util/aprutil.sln" "Debug|Win32"   "apriconv"  || exit 1
     build_sln "apr-util/aprutil.sln" "Release|Win32" "apriconv"  || exit 1
-    #build_sln "apr-util/aprutil.sln" "Debug|Win32"   "xml"  || exit 1
-    #build_sln "apr-util/aprutil.sln" "Release|Win32" "xml"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|Win32"    "libapr" || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|Win32"  "libapr" || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|Win32"    "libapriconv" || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|Win32"  "libapriconv" || exit 1
     build_sln "apr-util/aprutil.sln" "Debug|Win32"    "libaprutil" || exit 1
     build_sln "apr-util/aprutil.sln" "Release|Win32"  "libaprutil" || exit 1
     
@@ -93,12 +87,6 @@ case "$AUTOBUILD_PLATFORM" in
     build_sln "apr-util/aprutil.sln" "Release|x64" "aprutil"  || exit 1
     build_sln "apr-util/aprutil.sln" "Debug|x64"   "apriconv"  || exit 1
     build_sln "apr-util/aprutil.sln" "Release|x64" "apriconv"  || exit 1
-    #build_sln "apr-util/aprutil.sln" "Debug|x64"   "xml"  || exit 1
-    #build_sln "apr-util/aprutil.sln" "Release|x64" "xml"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|x64"    "libapr" || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|x64"  "libapr" || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|x64"    "libapriconv" || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|x64"  "libapriconv" || exit 1
     build_sln "apr-util/aprutil.sln" "Debug|x64"    "libaprutil" || exit 1
     build_sln "apr-util/aprutil.sln" "Release|x64"  "libaprutil" || exit 1
     
