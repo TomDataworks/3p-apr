@@ -501,6 +501,29 @@ APR_DECLARE(apr_status_t) apr_procattr_cmdtype_set(apr_procattr_t *attr,
 APR_DECLARE(apr_status_t) apr_procattr_detach_set(apr_procattr_t *attr, 
                                                  apr_int32_t detach);
 
+/**
+ * Request OS to tie child-process lifespan to parent process.
+ * (Currently supported only on Windows.)
+ * @param attr The procattr we care about.
+ * @param autokill Nonzero means child lifespan will be tied to calling
+ * process lifespan. Default is no.
+ */
+APR_DECLARE(apr_status_t) apr_procattr_autokill_set(apr_procattr_t *attr,
+                                                    apr_int32_t autokill);
+// APR_HAS_PROCATTR_AUTOKILL_SET actually has three discernable states. Plain
+// APR doesn't define it, so #if ! defined(APR_HAS_PROCATTR_AUTOKILL_SET) can
+// detect if the APR in hand lacks the extension. Further, though, we #define
+// it to 0 on platforms where we happen to know apr_procattr_autokill_set()
+// will return APR_ENOTIMPL.
+// It doesn't seem to work to #define MACRO as defined(OTHERMACRO) because
+// apparently defined() isn't itself a macro; it doesn't get rescanned. From
+// the preprocessor's point of view, MACRO simply has a funny string value.
+#if defined(WIN32) || defined(_WIN32)
+#define APR_HAS_PROCATTR_AUTOKILL_SET 1 // useful implementation
+#else
+#define APR_HAS_PROCATTR_AUTOKILL_SET 0 // placeholder implementation
+#endif
+
 #if APR_HAVE_STRUCT_RLIMIT
 /**
  * Set the Resource Utilization limits when starting a new process.

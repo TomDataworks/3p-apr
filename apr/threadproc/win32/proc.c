@@ -31,6 +31,7 @@
 #if APR_HAVE_PROCESS_H
 #include <process.h>
 #endif
+#include "apr_log.h"
 
 /* Heavy on no'ops, here's what we want to pass if there is APR_NO_FILE
  * requested for a specific child handle;
@@ -71,6 +72,7 @@ APR_DECLARE(apr_status_t) apr_procattr_create(apr_procattr_t **new,
     (*new) = (apr_procattr_t *)apr_pcalloc(pool, sizeof(apr_procattr_t));
     (*new)->pool = pool;
     (*new)->cmdtype = APR_PROGRAM;
+    (*new)->autokill = 0;
     return APR_SUCCESS;
 }
 
@@ -223,6 +225,12 @@ APR_DECLARE(apr_status_t) apr_procattr_detach_set(apr_procattr_t *attr,
                                                  apr_int32_t det) 
 {
     attr->detached = det;
+    return APR_SUCCESS;
+}
+
+APR_DECLARE(apr_status_t) apr_procattr_autokill_set(apr_procattr_t *attr, apr_int32_t autokill)
+{
+    attr->autokill = autokill;
     return APR_SUCCESS;
 }
 
@@ -445,6 +453,8 @@ apr_status_t apr_threadproc_init(apr_pool_t *pool)
 
 #endif
 
+static apr_status_t apr_assign_proc_to_jobobject(HANDLE proc);
+
 APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
                                           const char *progname,
                                           const char * const *args,
@@ -478,6 +488,27 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
              * 16 bit executables fail (MS KB: Q150956)
              */
             dwCreationFlags |= DETACHED_PROCESS;
+        }
+    }
+
+    if (attr->autokill)
+    {
+        // It's important to pass CREATE_BREAKAWAY_FROM_JOB because Windows 7 et
+        // al. tend to implicitly launch new processes already bound to a job. From
+        // http://msdn.microsoft.com/en-us/library/windows/desktop/ms681949%28v=vs.85%29.aspx :
+        // "The process must not already be assigned to a job; if it is, the
+        // function fails with ERROR_ACCESS_DENIED." ...
+        // "If the process is being monitored by the Program Compatibility
+        // Assistant (PCA), it is placed into a compatibility job. Therefore, the
+        // process must be created using CREATE_BREAKAWAY_FROM_JOB before it can
+        // be placed in another job."
+
+        // Should test apr_os_level as in the attr->detached logic, but at
+        // what point was CREATE_BREAKAWAY_FROM_JOB introduced?
+        //if (apr_os_level >= APR_WIN_NT?)
+        {
+            apr_log("  setting CREATE_BREAKAWAY_FROM_JOB");
+            dwCreationFlags |= CREATE_BREAKAWAY_FROM_JOB;
         }
     }
 
@@ -972,6 +1003,60 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
         apr_file_close(attr->child_err);
     }
     CloseHandle(pi.hThread);
+
+    if (attr->autokill)
+    {
+        apr_status_t assigned = APR_SUCCESS;
+        apr_log("  apr_assign_proc_to_jobobject()");
+        assigned = apr_assign_proc_to_jobobject(new->hproc);
+        apr_log("  returned %d", assigned);
+        if (assigned != APR_SUCCESS)
+            return assigned;
+    }
+
+    return APR_SUCCESS;
+}
+
+static apr_status_t apr_assign_proc_to_jobobject(HANDLE proc)
+{
+    // We only need one Job Object for the calling process. May as well make
+    // it static.
+    static HANDLE sJob = 0;
+    if (! sJob)
+    {
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = { 0 };
+
+        apr_log("    CreateJobObject(NULL, NULL)");
+        sJob = CreateJobObject(NULL, NULL);
+        apr_log("    returned %08X", sJob);
+        if (! sJob)
+            return apr_get_os_error();
+
+        // Configure all child processes associated with this new job object
+        // to terminate when the calling process (us!) terminates.
+        jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        apr_log("    SetInformationJobObject()");
+        if (! SetInformationJobObject(sJob, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli)))
+        {
+            apr_status_t failcode = apr_get_os_error();
+            apr_log("    failed: %d", failcode);
+            // This Job Object is useless to us
+            CloseHandle(sJob);
+            sJob = 0;
+            return failcode;
+        }
+        apr_log("    okay");
+    }
+
+    // Here either sJob was already nonzero, or our calls to create it and set
+    // its info were successful.
+    apr_log("    AssignProcessToJobObject()");
+    if (! AssignProcessToJobObject(sJob, proc))
+    {
+        apr_log("    failed");
+        return apr_get_os_error();
+    }
+    apr_log("    okay");
 
     return APR_SUCCESS;
 }
