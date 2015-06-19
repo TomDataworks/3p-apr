@@ -125,7 +125,9 @@ case "$AUTOBUILD_PLATFORM" in
 'darwin')
     PREFIX="$STAGING_DIR"
 
-    opts='-arch i386 -arch x86_64 -iwithsysroot /Developer/SDKs/MacOSX10.10.sdk -mmacosx-version-min=10.8'
+    DEVELOPER="$(xcode-select -print-path)"
+    sdk="${DEVELOPER}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk"
+    opts="${TARGET_OPTS:--arch i386 -arch x86_64 -iwithsysroot $sdk -mmacosx-version-min=10.8}"
 
     pushd "$TOP_DIR/apr"
     CC="llvm-gcc" CFLAGS="$opts" CXXFLAGS="$opts" LDFLAGS="$opts" \
