@@ -47,6 +47,10 @@
 #include <tlhelp32.h>
 #endif
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <Processthreadsapi.h>
+#endif
+
 struct apr_other_child_rec_t {
     apr_pool_t *p;
     struct apr_other_child_rec_t *next;

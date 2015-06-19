@@ -14,6 +14,16 @@
  * limitations under the License.
  */
 
+/* At least for this one compilation, we must have access to STARTUPINFOEX.
+ * That's only defined at _WIN32_WINNT >= 0x0600.
+ */
+#if defined(_WIN32_WINNT) && _WIN32_WINNT < 0x0600
+#undef _WIN32_WINNT
+#endif
+#if ! defined(_WIN32_WINNT)
+#define _WIN32_WINNT 0x0600
+#endif
+
 #include "apr_arch_threadproc.h"
 #include "apr_arch_file_io.h"
 
@@ -73,6 +83,7 @@ APR_DECLARE(apr_status_t) apr_procattr_create(apr_procattr_t **new,
     (*new)->pool = pool;
     (*new)->cmdtype = APR_PROGRAM;
     (*new)->autokill = 0;
+    (*new)->constrain = 0;
     return APR_SUCCESS;
 }
 
@@ -96,12 +107,14 @@ APR_DECLARE(apr_status_t) apr_procattr_io_set(apr_procattr_t *attr,
 
         if (in == APR_NO_FILE)
             attr->child_in = &no_file;
-        else { 
+        else {
             stat = apr_file_pipe_create_ex(&attr->child_in, &attr->parent_in,
                                            in, attr->pool);
+            if (stat == APR_SUCCESS)
+                stat = apr_file_inherit_unset(attr->parent_in);
+            if (stat == APR_SUCCESS)
+                stat = apr_file_inherit_set(attr->child_in);
         }
-        if (stat == APR_SUCCESS)
-            stat = apr_file_inherit_unset(attr->parent_in);
     }
     if (out && stat == APR_SUCCESS) {
         if (out == APR_NO_FILE)
@@ -109,9 +122,11 @@ APR_DECLARE(apr_status_t) apr_procattr_io_set(apr_procattr_t *attr,
         else { 
             stat = apr_file_pipe_create_ex(&attr->parent_out, &attr->child_out,
                                            out, attr->pool);
+            if (stat == APR_SUCCESS)
+                stat = apr_file_inherit_unset(attr->parent_out);
+            if (stat == APR_SUCCESS)
+                stat = apr_file_inherit_set(attr->child_out);
         }
-        if (stat == APR_SUCCESS)
-            stat = apr_file_inherit_unset(attr->parent_out);
     }
     if (err && stat == APR_SUCCESS) {
         if (err == APR_NO_FILE)
@@ -119,9 +134,11 @@ APR_DECLARE(apr_status_t) apr_procattr_io_set(apr_procattr_t *attr,
         else { 
             stat = apr_file_pipe_create_ex(&attr->parent_err, &attr->child_err,
                                            err, attr->pool);
+            if (stat == APR_SUCCESS)
+                stat = apr_file_inherit_unset(attr->parent_err);
+            if (stat == APR_SUCCESS)
+                stat = apr_file_inherit_set(attr->child_err);
         }
-        if (stat == APR_SUCCESS)
-            stat = apr_file_inherit_unset(attr->parent_err);
     }
     return stat;
 }
@@ -231,6 +248,13 @@ APR_DECLARE(apr_status_t) apr_procattr_detach_set(apr_procattr_t *attr,
 APR_DECLARE(apr_status_t) apr_procattr_autokill_set(apr_procattr_t *attr, apr_int32_t autokill)
 {
     attr->autokill = autokill;
+    return APR_SUCCESS;
+}
+
+APR_DECLARE(apr_status_t) apr_procattr_constrain_handle_set(apr_procattr_t *attr,
+                                                            apr_int32_t constrain)
+{
+    attr->constrain = constrain;
     return APR_SUCCESS;
 }
 
@@ -454,6 +478,16 @@ apr_status_t apr_threadproc_init(apr_pool_t *pool)
 #endif
 
 static apr_status_t apr_assign_proc_to_jobobject(HANDLE proc);
+/* Pass a pointer to the PROC_THREAD_ATTRIBUTE_LIST pointer to set. Ideally,
+ * pass &lpAttributeList member of a STARTUPINFOEX struct you will pass to
+ * CreateProcess(). This function initializes a PROC_THREAD_ATTRIBUTE_LIST,
+ * stores its pointer into the passed pointer variable and captures the passed
+ * list of handles.
+ */
+static apr_status_t apr_set_handle_list(LPPROC_THREAD_ATTRIBUTE_LIST* ppattrlist,
+                                        DWORD cHandlesToInherit,
+                                        HANDLE* rgHandlesToInherit);
+static void apr_cleanup_handle_list(LPPROC_THREAD_ATTRIBUTE_LIST* ppattrlist);
 
 APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
                                           const char *progname,
@@ -462,13 +496,29 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
                                           apr_procattr_t *attr,
                                           apr_pool_t *pool)
 {
-    apr_status_t rv;
+    apr_status_t rv = APR_SUCCESS;
     apr_size_t i;
     const char *argv0;
     char *cmdline;
     char *pEnvBlock;
     PROCESS_INFORMATION pi;
     DWORD dwCreationFlags = 0;
+
+    apr_log("apr_proc_create(%s):", apr_logstr(progname));
+    if (args)
+    {
+        size_t i;
+        apr_log("  args:");
+        for (i = 0; args[i]; ++i)
+            apr_log("    '%s'", args[i]);
+    }
+    if (env)
+    {
+        size_t i;
+        apr_log("  env:");
+        for (i = 0; env[i]; ++i)
+            apr_log("    '%s'", env[i]);
+    }
 
     new->in = attr->parent_in;
     new->out = attr->parent_out;
@@ -483,6 +533,7 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
          * bit executables if the detached attribute is set.
          */
         if (apr_os_level >= APR_WIN_NT) {
+            apr_log("  setting DETACHED_PROCESS");
             /* 
              * XXX DETACHED_PROCESS won't on Win9x at all; on NT/W2K 
              * 16 bit executables fail (MS KB: Q150956)
@@ -673,6 +724,8 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
             }
         }
     }
+    apr_log("  progname: '%s'", apr_logstr(progname));
+    apr_log("  cmdline:  '%s'", apr_logstr(cmdline));
 
     if (!env || attr->cmdtype == APR_PROGRAM_ENV ||
         attr->cmdtype == APR_SHELLCMD_ENV) {
@@ -743,13 +796,17 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
         }
 #endif /* APR_HAS_ANSI_FS */
     } 
+    apr_log("  pEnvBlock is%s NULL", (pEnvBlock? " not" : ""));
 
     new->invoked = cmdline;
 
 #if APR_HAS_UNICODE_FS
     IF_WIN_OS_IS_UNICODE
     {
-        STARTUPINFOW si;
+        STARTUPINFOEXW si;
+        HANDLE inherit[3];          /* stdin, stdout, stderr */
+        DWORD inherit_cnt = 0;      /* slots used in 'inherit' */
+        BOOL  bInheritHandles = TRUE; /* like vanilla APR */
         DWORD stdin_reset = 0;
         DWORD stdout_reset = 0;
         DWORD stderr_reset = 0;
@@ -806,13 +863,20 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
                 return rv;
             }
         }
+        apr_log("  wprg: '%ws'", apr_logwstr(wprg));
+        apr_log("  wcmd: '%ws'", apr_logwstr(wcmd));
+        apr_log("  wcwd: '%ws'", apr_logwstr(wcwd));
 
+        /* clear ALL of STARTUPINFOEXW... */
         memset(&si, 0, sizeof(si));
-        si.cb = sizeof(si);
+        /* but for the moment, only tell CreateProcessW() about its
+           STARTUPINFOW prefix */
+        si.StartupInfo.cb = sizeof(STARTUPINFOW);
 
         if (attr->detached) {
-            si.dwFlags |= STARTF_USESHOWWINDOW;
-            si.wShowWindow = SW_HIDE;
+            si.StartupInfo.dwFlags |= STARTF_USESHOWWINDOW;
+            si.StartupInfo.wShowWindow = SW_HIDE;
+            apr_log("  setting STARTF_USESHOWWINDOW, SW_HIDE");
         }
 
 #ifndef _WIN32_WCE
@@ -825,88 +889,137 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
             || (attr->child_out && attr->child_out->filehand)
             || (attr->child_err && attr->child_err->filehand))
         {
-            si.dwFlags |= STARTF_USESTDHANDLES;
+            si.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
+            apr_log("  setting STARTF_USESTDHANDLES");
 
-            si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+            si.StartupInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
             if (attr->child_in && attr->child_in->filehand)
             {
-                if (GetHandleInformation(si.hStdInput,
+                if (GetHandleInformation(si.StartupInfo.hStdInput,
                                          &stdin_reset)
                         && (stdin_reset &= HANDLE_FLAG_INHERIT))
-                    SetHandleInformation(si.hStdInput,
+                    SetHandleInformation(si.StartupInfo.hStdInput,
                                          HANDLE_FLAG_INHERIT, 0);
 
-                if ( (si.hStdInput = attr->child_in->filehand) 
+                if ( (si.StartupInfo.hStdInput = attr->child_in->filehand) 
                                    != INVALID_HANDLE_VALUE )
-                    SetHandleInformation(si.hStdInput, HANDLE_FLAG_INHERIT,
-                                                       HANDLE_FLAG_INHERIT);
+                {
+                    SetHandleInformation(si.StartupInfo.hStdInput, HANDLE_FLAG_INHERIT,
+                                                                   HANDLE_FLAG_INHERIT);
+                    inherit[inherit_cnt++] = si.StartupInfo.hStdInput;
+                }
             }
-            
-            si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+
+            si.StartupInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
             if (attr->child_out && attr->child_out->filehand)
             {
-                if (GetHandleInformation(si.hStdOutput,
+                if (GetHandleInformation(si.StartupInfo.hStdOutput,
                                          &stdout_reset)
                         && (stdout_reset &= HANDLE_FLAG_INHERIT))
-                    SetHandleInformation(si.hStdOutput,
+                    SetHandleInformation(si.StartupInfo.hStdOutput,
                                          HANDLE_FLAG_INHERIT, 0);
 
-                if ( (si.hStdOutput = attr->child_out->filehand) 
+                if ( (si.StartupInfo.hStdOutput = attr->child_out->filehand) 
                                    != INVALID_HANDLE_VALUE )
-                    SetHandleInformation(si.hStdOutput, HANDLE_FLAG_INHERIT,
-                                                        HANDLE_FLAG_INHERIT);
+                {
+                    SetHandleInformation(si.StartupInfo.hStdOutput, HANDLE_FLAG_INHERIT,
+                                                                    HANDLE_FLAG_INHERIT);
+                    inherit[inherit_cnt++] = si.StartupInfo.hStdOutput;
+                }
             }
 
-            si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+            si.StartupInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
             if (attr->child_err && attr->child_err->filehand)
             {
-                if (GetHandleInformation(si.hStdError,
+                if (GetHandleInformation(si.StartupInfo.hStdError,
                                          &stderr_reset)
                         && (stderr_reset &= HANDLE_FLAG_INHERIT))
-                    SetHandleInformation(si.hStdError,
+                    SetHandleInformation(si.StartupInfo.hStdError,
                                          HANDLE_FLAG_INHERIT, 0);
 
-                if ( (si.hStdError = attr->child_err->filehand) 
+                if ( (si.StartupInfo.hStdError = attr->child_err->filehand) 
                                    != INVALID_HANDLE_VALUE )
-                    SetHandleInformation(si.hStdError, HANDLE_FLAG_INHERIT,
-                                                       HANDLE_FLAG_INHERIT);
+                {
+                    SetHandleInformation(si.StartupInfo.hStdError, HANDLE_FLAG_INHERIT,
+                                                                   HANDLE_FLAG_INHERIT);
+                    inherit[inherit_cnt++] = si.StartupInfo.hStdError;
+                }
             }
+            apr_log("  inherit_cnt = %d", inherit_cnt);
         }
-        if (attr->user_token) {
-            /* XXX: for terminal services, handles can't be cannot be
-             * inherited across sessions.  This process must be created 
-             * in our existing session.  lpDesktop assignment appears
-             * to be wrong according to these rules.
-             */
-            si.lpDesktop = L"Winsta0\\Default";
-            if (!ImpersonateLoggedOnUser(attr->user_token)) {
-            /* failed to impersonate the logged user */
-                rv = apr_get_os_error();
-                CloseHandle(attr->user_token);
-                attr->user_token = NULL;
-                LeaveCriticalSection(&proc_lock);
-                return rv;
-            }
-            rv = CreateProcessAsUserW(attr->user_token,
-                                      wprg, wcmd,
-                                      attr->sa,
-                                      NULL,
-                                      TRUE,
-                                      dwCreationFlags,
-                                      pEnvBlock,
-                                      wcwd,
-                                      &si, &pi);
 
-            RevertToSelf();
+        /* Only mess with apr_set_handle_list() if caller used our
+           apr_procattr_constrain_handle_set() extension */
+        if (attr->constrain)
+        {
+            /* Caller wants us to strictly constrain handles passed to child */
+            if (! inherit_cnt)
+            {
+                /* If 'inherit' is empty, simply turn off bInheritHandles. */
+                apr_log("  attr->constrain but no handles: bInheritHandles = FALSE");
+                bInheritHandles = FALSE;
+            }
+            else
+            {
+                apr_log("  attr->constrain with %d handles: "
+                        "setting EXTENDED_STARTUPINFO_PRESENT",
+                        inherit_cnt);
+                /* We need STARTUPINFOEXW::lpAttributeList. Confess to
+                   CreateProcessW() that it's really a STARTUPINFOEXW rather
+                   than a vanilla STARTUPINFOW. */
+                dwCreationFlags |= EXTENDED_STARTUPINFO_PRESENT;
+                si.StartupInfo.cb = sizeof(si);
+                /* set specific handle list */
+                rv = apr_set_handle_list(&si.lpAttributeList, inherit_cnt, inherit);
+                apr_log("  apr_set_handle_list(%d) returned %d", inherit_cnt, rv);
+            }
         }
-        else {
-            rv = CreateProcessW(wprg, wcmd,        /* Executable & Command line */
-                                NULL, NULL,        /* Proc & thread security attributes */
-                                TRUE,              /* Inherit handles */
-                                dwCreationFlags,   /* Creation flags */
-                                pEnvBlock,         /* Environment block */
-                                wcwd,              /* Current directory name */
-                                &si, &pi);
+
+        if (rv == APR_SUCCESS)
+        {
+            if (attr->user_token) {
+                /* XXX: for terminal services, handles can't be cannot be
+                 * inherited across sessions.  This process must be created 
+                 * in our existing session.  lpDesktop assignment appears
+                 * to be wrong according to these rules.
+                 */
+                si.StartupInfo.lpDesktop = L"Winsta0\\Default";
+                if (!ImpersonateLoggedOnUser(attr->user_token)) {
+                /* failed to impersonate the logged user */
+                    rv = apr_get_os_error();
+                    CloseHandle(attr->user_token);
+                    attr->user_token = NULL;
+                }
+                else
+                {
+                    apr_log("  CreateProcessAsUserW()");
+                    rv = CreateProcessAsUserW(attr->user_token,
+                                              wprg, wcmd,
+                                              attr->sa,
+                                              NULL,
+                                              bInheritHandles,
+                                              dwCreationFlags,
+                                              pEnvBlock,
+                                              wcwd,
+                                              (LPSTARTUPINFOW)(&si),
+                                              &pi);
+                    apr_log("  returned %d", rv);
+
+                    RevertToSelf();
+                }
+            }
+            else {
+                apr_log("  CreateProcessW()");
+                rv = CreateProcessW(wprg, wcmd,        /* Executable & Command line */
+                                    NULL, NULL,        /* Proc & thread security attributes */
+                                    bInheritHandles,   /* Inherit handles */
+                                    dwCreationFlags,   /* Creation flags */
+                                    pEnvBlock,         /* Environment block */
+                                    wcwd,              /* Current directory name */
+                                    (LPSTARTUPINFOW)(&si),
+                                    &pi);
+                apr_log("  returned %d", rv);
+            }
         }
 
         if ((attr->child_in && attr->child_in->filehand)
@@ -931,6 +1044,7 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
         LeaveCriticalSection(&proc_lock);
 
 #else /* defined(_WIN32_WCE) */
+        apr_log("  _WIN32_WCE CreateProcessW()");
         rv = CreateProcessW(wprg, wcmd,        /* Executable & Command line */
                             NULL, NULL,        /* Proc & thread security attributes */
                             FALSE,             /* must be 0 */
@@ -939,47 +1053,101 @@ APR_DECLARE(apr_status_t) apr_proc_create(apr_proc_t *new,
                             NULL,              /* Current directory name must be NULL*/
                             NULL,              /* STARTUPINFO not supported */
                             &pi);
+        apr_log("  returned %d", rv);
 #endif
+
+        /* Clean up si.lpAttributeList if we set it */
+        apr_log("  apr_cleanup_handle_list()");
+        apr_cleanup_handle_list(&si.lpAttributeList);
+        apr_log("  okay");
     }
 #endif /* APR_HAS_UNICODE_FS */
 #if APR_HAS_ANSI_FS
     ELSE_WIN_OS_IS_ANSI
     {
-        STARTUPINFOA si;
+        STARTUPINFOEXA si;
+        HANDLE inherit[3];          /* stdin, stdout, stderr */
+        DWORD inherit_cnt = 0;      /* slots used in 'inherit' */
+        BOOL  bInheritHandles = TRUE; /* like vanilla APR */
+        /* clear ALL of STARTUPINFOEXA... */
         memset(&si, 0, sizeof(si));
-        si.cb = sizeof(si);
+        /* but for the moment, only tell CreateProcessA() about its
+           STARTUPINFOA prefix */
+        si.StartupInfo.cb = sizeof(STARTUPINFOA);
 
         if (attr->detached) {
-            si.dwFlags |= STARTF_USESHOWWINDOW;
-            si.wShowWindow = SW_HIDE;
+            si.StartupInfo.dwFlags |= STARTF_USESHOWWINDOW;
+            si.StartupInfo.wShowWindow = SW_HIDE;
+            apr_log("  setting STARTF_USESHOWWINDOW, SW_HIDE");
         }
 
         if ((attr->child_in && attr->child_in->filehand)
             || (attr->child_out && attr->child_out->filehand)
             || (attr->child_err && attr->child_err->filehand))
         {
-            si.dwFlags |= STARTF_USESTDHANDLES;
+            si.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-            si.hStdInput = (attr->child_in) 
+            si.StartupInfo.hStdInput = (attr->child_in) 
                               ? attr->child_in->filehand
                               : GetStdHandle(STD_INPUT_HANDLE);
+            inherit[inherit_cnt++] = si.StartupInfo.hStdInput;
 
-            si.hStdOutput = (attr->child_out)
+            si.StartupInfo.hStdOutput = (attr->child_out)
                               ? attr->child_out->filehand
                               : GetStdHandle(STD_OUTPUT_HANDLE);
+            inherit[inherit_cnt++] = si.StartupInfo.hStdOutput;
 
-            si.hStdError = (attr->child_err)
+            si.StartupInfo.hStdError = (attr->child_err)
                               ? attr->child_err->filehand
                               : GetStdHandle(STD_ERROR_HANDLE);
+            inherit[inherit_cnt++] = si.StartupInfo.hStdError;
         }
 
-        rv = CreateProcessA(progname, cmdline, /* Command line */
-                            NULL, NULL,        /* Proc & thread security attributes */
-                            TRUE,              /* Inherit handles */
-                            dwCreationFlags,   /* Creation flags */
-                            pEnvBlock,         /* Environment block */
-                            attr->currdir,     /* Current directory name */
-                            &si, &pi);
+        /* Only mess with apr_set_handle_list() if caller used our
+           apr_procattr_constrain_handle_set() extension */
+        if (attr->constrain)
+        {
+            /* Caller wants us to strictly constrain handles passed to child */
+            if (! inherit_cnt)
+            {
+                /* If 'inherit' is empty, simply turn off bInheritHandles. */
+                apr_log("  attr->constrain but no handles: bInheritHandles = FALSE");
+                bInheritHandles = FALSE;
+            }
+            else
+            {
+                apr_log("  attr->constrain with %d handles: "
+                        "setting EXTENDED_STARTUPINFO_PRESENT",
+                        inherit_cnt);
+                /* We need STARTUPINFOEXA::lpAttributeList. Confess to
+                   CreateProcessA() that it's really a STARTUPINFOEXA rather
+                   than a vanilla STARTUPINFOA. */
+                dwCreationFlags |= EXTENDED_STARTUPINFO_PRESENT;
+                si.StartupInfo.cb = sizeof(si);
+                /* set specific handle list */
+                rv = apr_set_handle_list(&si.lpAttributeList, inherit_cnt, inherit);
+                apr_log("  apr_set_handle_list(%d) returned %d", inherit_cnt, rv);
+            }
+        }
+
+        if (rv == APR_SUCCESS)
+        {
+            apr_log("  CreateProcessA()");
+            rv = CreateProcessA(progname, cmdline, /* Command line */
+                                NULL, NULL,        /* Proc & thread security attributes */
+                                bInheritHandles,   /* Inherit handles */
+                                dwCreationFlags,   /* Creation flags */
+                                pEnvBlock,         /* Environment block */
+                                attr->currdir,     /* Current directory name */
+                                (LPSTARTUPINFOA)(&si),
+                                &pi);
+            apr_log("  returned %d", rv);
+        }
+
+        /* Clean up si.lpAttributeList if we set it */
+        apr_log("  apr_cleanup_handle_list()");
+        apr_cleanup_handle_list(&si.lpAttributeList);
+        apr_log("  okay");
     }
 #endif /* APR_HAS_ANSI_FS */
 
@@ -1059,6 +1227,122 @@ static apr_status_t apr_assign_proc_to_jobobject(HANDLE proc)
     apr_log("    okay");
 
     return APR_SUCCESS;
+}
+
+/* This function is liberally derived from Raymond Chen's
+ * http://blogs.msdn.com/b/oldnewthing/archive/2011/12/16/10248328.aspx
+ *
+ * Note that as the Win32 API functions on which it relies are not supported
+ * in Windows XP, we've declared them in win32/apr_arch_misc.h using the
+ * APR_DECLARE_LATE_DLL_FUNC() macro, and we use APR_HAVE_LATE_DLL_FUNC() to
+ * test for their existence.
+ */
+static apr_status_t apr_set_handle_list(LPPROC_THREAD_ATTRIBUTE_LIST* ppattrlist,
+                                        DWORD cHandlesToInherit,
+                                        HANDLE* rgHandlesToInherit)
+{
+    SIZE_T size = 0;
+    DWORD error = 0;
+    LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList = NULL;
+
+    *ppattrlist = NULL;
+
+    apr_log("    cHandlesToInherit = %d", cHandlesToInherit);
+    if (! cHandlesToInherit)
+        return APR_SUCCESS;
+
+    if (cHandlesToInherit >= (0xFFFFFFFF / sizeof(HANDLE))) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    /* "Initializing a PROC_THREAD_ATTRIBUTE_LIST is a two-step affair. First
+     * you call InitializeProcThreadAttributeList() with a NULL attribute list
+     * in order to determine how much memory you need to allocate for a
+     * one-entry attribute list. After allocating the memory, you call
+     * InitializeProcThreadAttributeList() a second time to do the actual
+     * initialization."
+     */
+
+    apr_log("    InitializeProcThreadAttributeList() size query");
+    InitializeProcThreadAttributeList(NULL, 1, 0, &size);
+    error = GetLastError();
+    if (error != ERROR_INSUFFICIENT_BUFFER)
+    {
+        apr_log("    returned unexpected %d", error);
+        return error;
+    }
+
+    apr_log("    HeapAlloc(%u)", size);
+    lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)(HeapAlloc(GetProcessHeap(), 0, size));
+    if (! lpAttributeList)
+    {
+        apr_log("    STATUS_NO_MEMORY");
+        /* HeapAlloc() is documented to not set GetLastError() info on fail. */
+        SetLastError(STATUS_NO_MEMORY);
+        return STATUS_NO_MEMORY;
+    }
+
+    /* Here we have an allocated but uninitialized PROC_THREAD_ATTRIBUTE_LIST.
+     * Do not yet set *ppattrlist: it does our caller no good until
+     * initialized.
+     */
+
+    apr_log("    InitializeProcThreadAttributeList() for real");
+    if (! InitializeProcThreadAttributeList(lpAttributeList, 1, 0, &size))
+    {
+        error = GetLastError();
+        apr_log("    returned %d", error);
+        /* clean up allocated but uninitialized memory */
+        HeapFree(GetProcessHeap(), 0, lpAttributeList);
+        return error;
+    }
+
+    /* "After creating the attribute list, you set the one entry by calling
+     * UpdateProcThreadAttributeList()."
+     */
+
+    apr_log("    UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_HANDLE_LIST, %d)",
+            cHandlesToInherit * sizeof(HANDLE));
+    if (! UpdateProcThreadAttribute(lpAttributeList,
+                                    0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                    rgHandlesToInherit,
+                                    cHandlesToInherit * sizeof(HANDLE), NULL, NULL))
+    {
+        error = GetLastError();
+        apr_log("    returned %d", error);
+        /* At this point, with lpAttributeList allocated and initialized, we
+         * can use the real cleanup function.
+         */
+        apr_cleanup_handle_list(&lpAttributeList);
+        return error;
+    }
+    apr_log("    okay");
+
+    /* All systems go! Set caller's pointer. */
+    *ppattrlist = lpAttributeList;
+    return APR_SUCCESS;
+}
+
+static void apr_cleanup_handle_list(LPPROC_THREAD_ATTRIBUTE_LIST* ppattrlist)
+{
+    /* An LPPROC_THREAD_ATTRIBUTE_LIST might be in any of three states:
+     * NULL
+     * Allocated but not initialized
+     * Allocated and initialized
+     * We rely on apr_set_handle_list() to only set the caller's
+     * LPPROC_THREAD_ATTRIBUTE_LIST non-NULL if it's both allocated and
+     * initialized. That way we only have to distinguish two cases.
+     */
+
+    if (*ppattrlist)
+    {
+        apr_log("    DeleteProcThreadAttributeList()");
+        DeleteProcThreadAttributeList(*ppattrlist);
+        apr_log("    HeapFree()");
+        HeapFree(GetProcessHeap(), 0, *ppattrlist);
+        *ppattrlist = NULL;
+    }
 }
 
 static apr_exit_why_e why_from_exit_code(DWORD exit) {
