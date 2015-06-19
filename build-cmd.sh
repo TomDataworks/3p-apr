@@ -9,7 +9,7 @@ if [ -z "$AUTOBUILD" ] ; then
     fail
 fi
 
-APR_VERSION="1.4.5"
+APR_VERSION="1.5.2"
 
 if [ "$OSTYPE" = "cygwin" ] ; then
     export AUTOBUILD="$(cygpath -u $AUTOBUILD)"
