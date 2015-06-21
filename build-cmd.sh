@@ -228,22 +228,10 @@ case "$AUTOBUILD_PLATFORM" in
         LDFLAGS="-m32" CFLAGS="-m32 -O3 -g $HARDENED" CXXFLAGS="-m32 -O3 -g $HARDENED" ./configure --prefix="$PREFIX" --libdir="$PREFIX/lib/release"
         make -j$JOBS
         make install
-    popd
 
-    pushd "$TOP_DIR/apr-iconv"
-        # NOTE: the autotools scripts in iconv don't honor the --libdir switch so we
-        # need to build to a dummy prefix and copy the files into the correct place
-        mkdir "$PREFIX/iconv"
-        LDFLAGS="-m32" CFLAGS="-m32 -O3 -g $HARDENED" CXXFLAGS="-m32 -O3 -g $HARDENED" ./configure --prefix="$PREFIX/iconv" --with-apr="../apr"
-        make -j$JOBS
-        make install
-
-        # move the files into place
-        mkdir -p "$PREFIX/bin"
-        cp -a "$PREFIX"/iconv/lib/* "$PREFIX/lib/release"
-        cp -r "$PREFIX/iconv/include/apr-1" "$PREFIX/include/"
-        cp "$PREFIX/iconv/bin/apriconv" "$PREFIX/bin/"
-        rm -rf "$PREFIX/iconv"
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
     popd
 
     pushd "$TOP_DIR/apr-util"
@@ -255,9 +243,13 @@ case "$AUTOBUILD_PLATFORM" in
         # need to build to a dummy prefix and copy the files into the correct place
         mkdir "$PREFIX/util"
         LDFLAGS="-m32" CFLAGS="-m32 -O3 -g $HARDENED" CXXFLAGS="-m32 -O3 -g $HARDENED" ./configure --prefix="$PREFIX/util" \
-                    --with-apr="../apr" --with-apr-iconv="../apr-iconv" --with-expat="$PREFIX/packages/"
+             --with-apr="../apr" --with-expat="$PREFIX/packages/" --without-sqlite2 --without-sqlite3
         make -j$JOBS
         make install
+
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
 
         # move files into place
         mkdir -p "$PREFIX/bin"
@@ -271,34 +263,19 @@ case "$AUTOBUILD_PLATFORM" in
     pushd "$TOP_DIR/apr"
         make distclean
     popd
-    pushd "$TOP_DIR/apr-iconv"
-        make distclean
-    popd
     pushd "$TOP_DIR/apr-util"
         make distclean
     popd
 
-    # do release builds
+    # do debug builds
     pushd "$TOP_DIR/apr"
         LDFLAGS="-m32" CFLAGS="-m32 -Og -g" CXXFLAGS="-m32 -Og -g" ./configure --prefix="$PREFIX" --libdir="$PREFIX/lib/debug"
         make -j$JOBS
         make install
-    popd
-
-    pushd "$TOP_DIR/apr-iconv"
-        # NOTE: the autotools scripts in iconv don't honor the --libdir switch so we
-        # need to build to a dummy prefix and copy the files into the correct place
-        mkdir "$PREFIX/iconv"
-        LDFLAGS="-m32" CFLAGS="-m32 -Og -g" CXXFLAGS="-m32 -Og -g" ./configure --prefix="$PREFIX/iconv" --with-apr="../apr"
-        make -j$JOBS
-        make install
-
-        # move the files into place
-        mkdir -p "$PREFIX/bin"
-        cp -a "$PREFIX"/iconv/lib/* "$PREFIX/lib/debug"
-        cp -r "$PREFIX/iconv/include/apr-1" "$PREFIX/include/"
-        cp "$PREFIX/iconv/bin/apriconv" "$PREFIX/bin/"
-        rm -rf "$PREFIX/iconv"
+		
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
     popd
 
     pushd "$TOP_DIR/apr-util"
@@ -309,9 +286,14 @@ case "$AUTOBUILD_PLATFORM" in
         # the autotools for apr-util don't honor the --libdir switch so we
         # need to build to a dummy prefix and copy the files into the correct place
         mkdir "$PREFIX/util"
-        LDFLAGS="-m32" CFLAGS="-m32 -Og -g" CXXFLAGS="-m32 -Og -g" ./configure --prefix="$PREFIX/util" --with-apr="../apr" --with-apr-iconv="../apr-iconv" --with-expat="$PREFIX/packages/"
+        LDFLAGS="-m32" CFLAGS="-m32 -Og -g" CXXFLAGS="-m32 -Og -g" ./configure --prefix="$PREFIX/util" --with-apr="../apr" \
+            --with-expat="$PREFIX/packages/" --without-sqlite2 --without-sqlite3
         make -j$JOBS
         make install
+
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
 
         # move files into place
         mkdir -p "$PREFIX/bin"
@@ -327,9 +309,6 @@ case "$AUTOBUILD_PLATFORM" in
 
     # clean 
     pushd "$TOP_DIR/apr"
-        make distclean
-    popd
-    pushd "$TOP_DIR/apr-iconv"
         make distclean
     popd
     pushd "$TOP_DIR/apr-util"
@@ -349,22 +328,10 @@ case "$AUTOBUILD_PLATFORM" in
         LDFLAGS="-m64" CFLAGS="-m64 -O3 -g $HARDENED" CXXFLAGS="-m64 -O3 -g $HARDENED" ./configure --prefix="$PREFIX" --libdir="$PREFIX/lib/release"
         make -j$JOBS
         make install
-    popd
 
-    pushd "$TOP_DIR/apr-iconv"
-        # NOTE: the autotools scripts in iconv don't honor the --libdir switch so we
-        # need to build to a dummy prefix and copy the files into the correct place
-        mkdir "$PREFIX/iconv"
-        LDFLAGS="-m64" CFLAGS="-m64 -O3 -g $HARDENED" CXXFLAGS="-m64 -O3 -g $HARDENED" ./configure --prefix="$PREFIX/iconv" --with-apr="../apr"
-        make -j$JOBS
-        make install
-
-        # move the files into place
-        mkdir -p "$PREFIX/bin"
-        cp -a "$PREFIX"/iconv/lib/* "$PREFIX/lib/release"
-        cp -r "$PREFIX/iconv/include/apr-1" "$PREFIX/include/"
-        cp "$PREFIX/iconv/bin/apriconv" "$PREFIX/bin/"
-        rm -rf "$PREFIX/iconv"
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
     popd
 
     pushd "$TOP_DIR/apr-util"
@@ -376,9 +343,13 @@ case "$AUTOBUILD_PLATFORM" in
         # need to build to a dummy prefix and copy the files into the correct place
         mkdir "$PREFIX/util"
         LDFLAGS="-m64" CFLAGS="-m64 -O3 -g $HARDENED" CXXFLAGS="-m64 -O3 -g $HARDENED" ./configure --prefix="$PREFIX/util" \
-            --with-apr="../apr" --with-apr-iconv="../apr-iconv" --with-expat="$PREFIX/packages/"
+            --with-apr="../apr" --with-expat="$PREFIX/packages/" --without-sqlite2 --without-sqlite3
         make -j$JOBS
         make install
+
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
 
         # move files into place
         mkdir -p "$PREFIX/bin"
@@ -392,34 +363,19 @@ case "$AUTOBUILD_PLATFORM" in
     pushd "$TOP_DIR/apr"
         make distclean
     popd
-    pushd "$TOP_DIR/apr-iconv"
-        make distclean
-    popd
     pushd "$TOP_DIR/apr-util"
         make distclean
     popd
 
-    # do release builds
+    # do debug builds
     pushd "$TOP_DIR/apr"
         LDFLAGS="-m64" CFLAGS="-m64 -Og -g" CXXFLAGS="-m64 -Og -g" ./configure --prefix="$PREFIX" --libdir="$PREFIX/lib/debug"
         make -j$JOBS
         make install
-    popd
 
-    pushd "$TOP_DIR/apr-iconv"
-        # NOTE: the autotools scripts in iconv don't honor the --libdir switch so we
-        # need to build to a dummy prefix and copy the files into the correct place
-        mkdir "$PREFIX/iconv"
-        LDFLAGS="-m64" CFLAGS="-m64 -Og -g" CXXFLAGS="-m64 -Og -g" ./configure --prefix="$PREFIX/iconv" --with-apr="../apr"
-        make -j$JOBS
-        make install
-
-        # move the files into place
-        mkdir -p "$PREFIX/bin"
-        cp -a "$PREFIX"/iconv/lib/* "$PREFIX/lib/debug"
-        cp -r "$PREFIX/iconv/include/apr-1" "$PREFIX/include/"
-        cp "$PREFIX/iconv/bin/apriconv" "$PREFIX/bin/"
-        rm -rf "$PREFIX/iconv"
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
     popd
 
     pushd "$TOP_DIR/apr-util"
@@ -430,9 +386,14 @@ case "$AUTOBUILD_PLATFORM" in
         # the autotools for apr-util don't honor the --libdir switch so we
         # need to build to a dummy prefix and copy the files into the correct place
         mkdir "$PREFIX/util"
-        LDFLAGS="-m64" CFLAGS="-m64 -Og -g" CXXFLAGS="-m64 -Og -g" ./configure --prefix="$PREFIX/util" --with-apr="../apr" --with-apr-iconv="../apr-iconv" --with-expat="$PREFIX/packages/"
+        LDFLAGS="-m64" CFLAGS="-m64 -Og -g" CXXFLAGS="-m64 -Og -g" ./configure --prefix="$PREFIX/util" --with-apr="../apr" \
+            --with-expat="$PREFIX/packages/" --without-sqlite2 --without-sqlite3
         make -j$JOBS
         make install
+
+        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+           make check
+        fi
 
         # move files into place
         mkdir -p "$PREFIX/bin"
@@ -448,9 +409,6 @@ case "$AUTOBUILD_PLATFORM" in
 
     # clean 
     pushd "$TOP_DIR/apr"
-        make distclean
-    popd
-    pushd "$TOP_DIR/apr-iconv"
         make distclean
     popd
     pushd "$TOP_DIR/apr-util"
