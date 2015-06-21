@@ -130,18 +130,29 @@ case "$AUTOBUILD_PLATFORM" in
     opts="${TARGET_OPTS:--arch i386 -arch x86_64 -iwithsysroot $sdk -mmacosx-version-min=10.8}"
 
     pushd "$TOP_DIR/apr"
-    CC="llvm-gcc" CFLAGS="$opts" CXXFLAGS="$opts" LDFLAGS="$opts" \
+    CC="clang" CFLAGS="$opts" CXXFLAGS="$opts" LDFLAGS="$opts" \
         ./configure --prefix="$PREFIX"
     make
     make install
+
+    if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        make check
+    fi
+
+
     popd
 
     pushd "$TOP_DIR/apr-util"
-    CC="llvm-gcc" CFLAGS="$opts" CXXFLAGS="$opts" LDFLAGS="$opts" \
+    CC="clang" CFLAGS="$opts" CXXFLAGS="$opts" LDFLAGS="$opts" \
         ./configure --prefix="$PREFIX" --with-apr="$PREFIX" \
         --with-expat="$PREFIX"
     make
     make install
+
+    if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        make check
+    fi
+
     popd
 
     # To conform with autobuild install-package conventions, we want to move
