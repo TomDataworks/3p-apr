@@ -229,7 +229,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
     popd
@@ -247,7 +247,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
 
@@ -273,7 +273,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 		
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
     popd
@@ -291,7 +291,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
 
@@ -329,7 +329,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
     popd
@@ -347,7 +347,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
 
@@ -373,7 +373,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
     popd
@@ -391,7 +391,7 @@ case "$AUTOBUILD_PLATFORM" in
         make -j$JOBS
         make install
 
-        if [ "${DISABLE_UNIT_TESTS:-1}" = "0" ]; then
+        if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi
 
