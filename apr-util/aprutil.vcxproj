@@ -129,6 +129,7 @@
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)aprutil-1</ProgramDataBaseFileName>
       <AdditionalOptions> /EHsc </AdditionalOptions>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -159,6 +160,7 @@
       <PrecompiledHeaderOutputFile>.\x64\LibR\aprutil.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)aprutil-1</ProgramDataBaseFileName>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -188,6 +190,7 @@
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)aprutil-1</ProgramDataBaseFileName>
       <AdditionalOptions> /EHsc </AdditionalOptions>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -218,6 +221,7 @@
       <PrecompiledHeaderOutputFile>.\LibR\aprutil.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)aprutil-1</ProgramDataBaseFileName>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>

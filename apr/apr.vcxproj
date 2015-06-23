@@ -191,6 +191,7 @@
       <PrecompiledHeaderOutputFile>.\x64\LibR\apr.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)apr-1</ProgramDataBaseFileName>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -220,6 +221,7 @@
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)apr-1</ProgramDataBaseFileName>
       <AdditionalOptions> /EHsc </AdditionalOptions>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -249,6 +251,7 @@
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)apr-1</ProgramDataBaseFileName>
       <AdditionalOptions> /EHsc </AdditionalOptions>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -309,6 +312,7 @@
       <PrecompiledHeaderOutputFile>.\LibR\apr.pch</PrecompiledHeaderOutputFile>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(OutDir)apr-1</ProgramDataBaseFileName>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
