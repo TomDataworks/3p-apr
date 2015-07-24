@@ -33,14 +33,14 @@ case "$AUTOBUILD_PLATFORM" in
 
     load_vsvars
  
-    build_sln "apr-util/aprutil.sln" "Debug|Win32"   "apr"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|Win32" "apr"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|Win32"   "aprutil"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|Win32" "aprutil"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|Win32"   "apriconv"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|Win32" "apriconv"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|Win32"    "libaprutil" || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|Win32"  "libaprutil" || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "Win32"   "apr"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "Win32" "apr"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "Win32"   "aprutil"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "Win32" "aprutil"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "Win32"   "apriconv"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "Win32" "apriconv"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "Win32"    "libaprutil" || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "Win32"  "libaprutil" || exit 1
     
     mkdir -p "$DEBUG_OUT_DIR"   || echo "$DEBUG_OUT_DIR exists"
     mkdir -p "$RELEASE_OUT_DIR" || echo "$RELEASE_OUT_DIR exists"
@@ -81,14 +81,14 @@ case "$AUTOBUILD_PLATFORM" in
 
     load_vsvars
  
-    build_sln "apr-util/aprutil.sln" "Debug|x64"   "apr"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|x64" "apr"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|x64"   "aprutil"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|x64" "aprutil"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|x64"   "apriconv"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|x64" "apriconv"  || exit 1
-    build_sln "apr-util/aprutil.sln" "Debug|x64"    "libaprutil" || exit 1
-    build_sln "apr-util/aprutil.sln" "Release|x64"  "libaprutil" || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "x64"   "apr"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "x64" "apr"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "x64"   "aprutil"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "x64" "aprutil"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "x64"   "apriconv"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "x64" "apriconv"  || exit 1
+    build_sln "apr-util/aprutil.sln" "Debug" "x64"    "libaprutil" || exit 1
+    build_sln "apr-util/aprutil.sln" "Release" "x64"  "libaprutil" || exit 1
     
     mkdir -p "$DEBUG_OUT_DIR"   || echo "$DEBUG_OUT_DIR exists"
     mkdir -p "$RELEASE_OUT_DIR" || echo "$RELEASE_OUT_DIR exists"
