@@ -226,7 +226,7 @@ case "$AUTOBUILD_PLATFORM" in
 'linux')
     PREFIX="$STAGING_DIR"
     JOBS=`cat /proc/cpuinfo | grep processor | wc -l`
-    HARDENED="-fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    HARDENED="-fstack-protector -D_FORTIFY_SOURCE=2"
 
     cp "$PREFIX/packages/include/expat/expat.h" "$PREFIX/packages/include/"
     cp "$PREFIX/packages/include/expat/expat_external.h" "$PREFIX/packages/include/"
@@ -251,7 +251,7 @@ case "$AUTOBUILD_PLATFORM" in
         # need to build to a dummy prefix and copy the files into the correct place
         mkdir "$PREFIX/util"
         LDFLAGS="-m32" CFLAGS="-m32 -O3 -g $HARDENED" CXXFLAGS="-m32 -O3 -g $HARDENED" ./configure --prefix="$PREFIX/util" \
-             --with-apr="../apr" --with-expat="$PREFIX/packages/" --without-sqlite2 --without-sqlite3
+            --with-apr="../apr" --with-expat="$PREFIX/packages/" --without-sqlite2 --without-sqlite3
         make -j$JOBS
         make install
 
@@ -280,7 +280,7 @@ case "$AUTOBUILD_PLATFORM" in
         LDFLAGS="-m32" CFLAGS="-m32 -Og -g" CXXFLAGS="-m32 -Og -g" ./configure --prefix="$PREFIX" --libdir="$PREFIX/lib/debug"
         make -j$JOBS
         make install
-		
+
         if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
            make check
         fi

@@ -48,11 +48,11 @@
             <key>archive</key>
             <map>
               <key>hash</key>
-              <string>b863aeee79defcd7f10860f19b97e254</string>
+              <string>1217d9f38473c777bbcdd74f25e03dde</string>
               <key>hash_algorithm</key>
               <string>md5</string>
               <key>url</key>
-              <string>http://depot.alchemyviewer.org/pub/linux64/lib/expat-2.1.0-linux64-201504222216.tar.bz2</string>
+              <string>http://depot.alchemyviewer.org/pub/linux64/lib-trusty/expat-2.1.0-linux64-201601171151.tar.bz2</string>
             </map>
             <key>name</key>
             <string>linux</string>
