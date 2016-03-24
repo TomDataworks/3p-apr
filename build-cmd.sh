@@ -326,7 +326,7 @@ case "$AUTOBUILD_PLATFORM" in
 'linux64')
     PREFIX="$STAGING_DIR"
     JOBS=`cat /proc/cpuinfo | grep processor | wc -l`
-    HARDENED="-fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    HARDENED="-fstack-protector -D_FORTIFY_SOURCE=2"
 
     cp "$PREFIX/packages/include/expat/expat.h" "$PREFIX/packages/include/"
     cp "$PREFIX/packages/include/expat/expat_external.h" "$PREFIX/packages/include/"
