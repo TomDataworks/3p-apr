@@ -158,7 +158,7 @@
       <OutputFile>x64\Debug\libaprutil-1.dll</OutputFile>
       <ImportLibrary>x64\Debug\libaprutil-1.lib</ImportLibrary>
       <BaseAddress>0x6EE60000</BaseAddress>
-      <AdditionalDependencies>ws2_32.lib;mswsock.lib;expat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;mswsock.lib;expatd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /MACHINE:X64</AdditionalOptions>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>../stage/packages/lib/debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -309,7 +309,7 @@
       <OutputFile>Debug\libaprutil-1.dll</OutputFile>
       <ImportLibrary>Debug\libaprutil-1.lib</ImportLibrary>
       <BaseAddress>0x6EE60000</BaseAddress>
-      <AdditionalDependencies>ws2_32.lib;mswsock.lib;expat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;mswsock.lib;expatd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> /MACHINE:X86</AdditionalOptions>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>../stage/packages/lib/debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
