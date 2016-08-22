@@ -6,7 +6,7 @@
       <key>expat</key>
       <map>
         <key>copyright</key>
-        <string>Copyright (c) 1998, 1999, 2000 Thai Open Source Software Center Ltd and Clark Cooper - Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006 Expat maintainers.</string>
+        <string>Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper - Copyright (c) 2001-2016 Expat maintainers</string>
         <key>description</key>
         <string>Expat is an XML parser library written in C</string>
         <key>license</key>
@@ -76,18 +76,18 @@
             <key>archive</key>
             <map>
               <key>hash</key>
-              <string>0cf6f4529ade22b7ae78da5d6303ed87</string>
+              <string>e7fe6faffb2bec9405df6478c5458457</string>
               <key>hash_algorithm</key>
               <string>md5</string>
               <key>url</key>
-              <string>http://depot.alchemyviewer.org/pub/windows64/lib-vc14/expat-2.1.1-windows64-201603261406.tar.bz2</string>
+              <string>http://depot.alchemyviewer.org/pub/windows64/lib-vc14_3/expat-2.2.0-windows64-201608211952.tar.bz2</string>
             </map>
             <key>name</key>
             <string>windows64</string>
           </map>
         </map>
         <key>version</key>
-        <string>2.1.1</string>
+        <string>2.2.0</string>
       </map>
     </map>
     <key>package_description</key>
